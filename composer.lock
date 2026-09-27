@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f0a9fd00221171f7810b0e1085471cd3",
+    "content-hash": "256af51fb843b5b57fbcc0ba0224b063",
     "packages": [
         {
             "name": "psr/event-dispatcher",
@@ -108,16 +108,16 @@
         },
         {
             "name": "rennf93/guard-core-php",
-            "version": "v4.1.0",
+            "version": "v4.2.0",
             "source": {
                 "type": "git",
-                "url": "https://github.com/rennf93/guard-core-php.git",
-                "reference": "ae8cdc081fa5e6f2105c9ca097704e05e6e311cc"
+                "url": "git@github.com:rennf93/guard-core-php.git",
+                "reference": "388d4d1e134b71062b6a18a86a46ba5bdd789571"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/rennf93/guard-core-php/zipball/ae8cdc081fa5e6f2105c9ca097704e05e6e311cc",
-                "reference": "ae8cdc081fa5e6f2105c9ca097704e05e6e311cc",
+                "url": "https://api.github.com/repos/rennf93/guard-core-php/zipball/388d4d1e134b71062b6a18a86a46ba5bdd789571",
+                "reference": "388d4d1e134b71062b6a18a86a46ba5bdd789571",
                 "shasum": ""
             },
             "require": {
@@ -144,11 +144,7 @@
                 "MIT"
             ],
             "description": "PHP port of guard-core: behavioral WAF engine (detection engine conformance milestone)",
-            "support": {
-                "source": "https://github.com/rennf93/guard-core-php/tree/v4.1.0",
-                "issues": "https://github.com/rennf93/guard-core-php/issues"
-            },
-            "time": "2026-09-26T17:53:15+00:00"
+            "time": "2026-09-27T18:43:50+00:00"
         },
         {
             "name": "symfony/deprecation-contracts",
