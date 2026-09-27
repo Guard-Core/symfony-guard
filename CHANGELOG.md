@@ -3,6 +3,18 @@ Release Notes
 
 ___
 
+v1.1.0 (unreleased)
+-------------------
+
+### Added
+
+- **Parity pass-through surface.** `GuardMiddleware` now finishes pass-through responses the way the reference response factory does: the engine's security headers (`securityHeaders`) and CORS verdict headers (`enableCors`, `corsAllow*`) are merged onto the kernel's response, and the engine's behavioral return rules observe the response status plus a body prefix bounded by `behavior_max_response_body_inspect_bytes` (scanned only while `behavior_scan_response_body` is on), so `globalBehaviorRules` and route `behaviorRules` with `return_pattern` rules act on what the application actually served.
+- **Per-route configuration.** The middleware takes `routes` (path pattern to `RouteConfig`, exact or trailing-slash prefix match) and an optional `routeResolver` closure receiving the raw Symfony request, attaching per-route behavior rules, detection exclusions, rate-limit tiers and check bypasses to the engine's request state.
+- **Geo rate-limit resolver.** A `geoRateLimitResolver` option injects the country resolver that powers `RouteConfig` `geoRateLimits` tiers; when absent, the middleware bridges the engine config's `geo_ip_handler` (kept by the engine only when country lists are configured).
+- Reachability tests for every new surface in `bin/test_symfony.php` (116 checks green) and pass-through/route/geo documentation in the README and `docs/configuration.md`.
+
+___
+
 v1.0.0 (2026-09-24)
 -------------------
 
