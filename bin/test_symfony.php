@@ -213,7 +213,26 @@ $blocked = $middleware->handle(symfonyRequest('/private', '192.0.2.66'), HttpKer
 $t->same(403, $blocked->getStatusCode(), 'blacklisted ip -> 403');
 $t->same('Forbidden', $blocked->getContent(), '403 body exact');
 $t->ok($blocked instanceof Response, 'block response is a Symfony-native response');
-$extra = array_diff_key($blocked->headers->all(), ['cache-control' => true, 'date' => true, 'content-type' => true]);
+// guard-core-php parity: error responses carry the engine default security
+// headers (Python reference guard_core/core/responses/factory.py applies
+// apply_security_headers inside create_error_response).
+$securityHeaderKeys = [
+    'x-content-type-options',
+    'x-frame-options',
+    'x-xss-protection',
+    'referrer-policy',
+    'permissions-policy',
+    'x-permitted-cross-domain-policies',
+    'x-download-options',
+    'cross-origin-embedder-policy',
+    'cross-origin-opener-policy',
+    'cross-origin-resource-policy',
+    'strict-transport-security',
+];
+$allowedHeaders = ['cache-control' => true, 'date' => true, 'content-type' => true] + array_flip($securityHeaderKeys);
+$missing = array_diff_key(array_flip($securityHeaderKeys), $blocked->headers->all());
+$t->same([], $missing, 'engine default security headers present on plain block');
+$extra = array_diff_key($blocked->headers->all(), $allowedHeaders);
 $t->same([], $extra, 'no unexpected headers on plain block (framework cache-control/date, engine content-type required)');
 $t->same('text/plain; charset=utf-8', $blocked->headers->get('Content-Type'), 'block response content type explicit');
 $t->same(0, $kernel->calls, 'downstream kernel not called on block');
