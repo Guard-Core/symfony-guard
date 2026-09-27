@@ -412,6 +412,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#per-route-configuration-and-pass-through-wiring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-route configuration and pass-through wiring
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -495,6 +506,17 @@
     <span class="md-ellipsis">
       
         Trusted proxies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#per-route-configuration-and-pass-through-wiring" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Per-route configuration and pass-through wiring
       
     </span>
   </a>
@@ -590,6 +612,30 @@ the real client IP from forwarded headers:</p>
 <span class="x">    // ...</span>
 <span class="x">);</span>
 </code></pre></div>
+<h2 id="per-route-configuration-and-pass-through-wiring">Per-route configuration and pass-through wiring</h2>
+<p>The middleware takes route configs and resolver hooks as its own options; the
+security content of each route still comes from the engine's <code>RouteConfig</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="x">use RenzoFranceschini\GuardCore\Routing\RouteConfig;</span>
+<span class="x">use RenzoFranceschini\GuardCoreSymfony\GuardMiddleware;</span>
+
+<span class="x">$middleware = new GuardMiddleware(</span>
+<span class="x">    $kernel,</span>
+<span class="x">    new GuardEngine($config),</span>
+<span class="x">    routes: [</span>
+<span class="x">        '/open/' =&gt; new RouteConfig(enableSuspiciousDetection: false),</span>
+<span class="x">        '/chatty/' =&gt; new RouteConfig(rateLimit: 5, rateLimitWindow: 60),</span>
+<span class="x">    ],</span>
+<span class="x">    geoRateLimitResolver: new MyCountryResolver(),   // powers RouteConfig geoRateLimits</span>
+<span class="x">    routeResolver: null,                             // or fn (Request $r): ?RouteConfig</span>
+<span class="x">);</span>
+</code></pre></div>
+<p>On the pass-through path the middleware applies the engine's security headers
+(<code>securityHeaders</code>) and CORS verdict headers (<code>enableCors</code>, <code>corsAllow*</code>) to the
+kernel's response, and reports the response status plus a body prefix (bounded
+by <code>behaviorMaxResponseBodyInspectBytes</code>, scanned only when
+<code>behaviorScanResponseBody</code> is on) to the engine's behavioral return rules:
+<code>globalBehaviorRules</code> and route <code>behaviorRules</code> with <code>return_pattern</code> rules act
+on what the application actually served. Return rules never modify the response.</p>
 
 
 
