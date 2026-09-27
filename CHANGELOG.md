@@ -3,6 +3,13 @@ Release Notes
 
 ___
 
+v1.2.0 (2026-09-27)
+-------------------
+
+### Changed
+
+- **Engine floor raised to guard-core-php ^4.2.0, the parity release.** The 4.1.0 family tags were a version-accuracy error and were yanked/unpublished, so the published ^4.1.0 constraint of v1.1.0 does not resolve publicly; 1.2.0 floors `rennf93/guard-core-php` to ^4.2.0 and picks up the 4.2.0 engine train: the on_block hook payloads now carry the reference log-format reasons, route-level IP rules (`RouteConfig` ipWhitelist/ipBlacklist/blockedCountries/whitelistCountries) are enforced, and the spec 4.1.0 corpus runs with an empty divergence registry (219 cases, pipeline gate 35 passed / 0 failed / 0 xfail). The CI engine checkout stamps the mounted sibling path checkout at 4.2.99 so the floor resolves against the engine master while keeping the published constraint ^4.2.0.
+
 v1.1.0 (unreleased)
 -------------------
 

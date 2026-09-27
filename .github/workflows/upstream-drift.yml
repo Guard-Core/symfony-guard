@@ -51,7 +51,7 @@ jobs:
           engine = "core-upstream/composer.json"
           with open(engine) as f:
               d = json.load(f)
-          d["version"] = "4.1.99"
+          d["version"] = "4.2.99"
           with open(engine, "w") as f:
               json.dump(d, f, indent=4)
               f.write("\n")
@@ -79,7 +79,7 @@ jobs:
             -e REDIS_HOST=127.0.0.1 \
             composer:2 sh -c '
               set -e
-              composer require --no-update --no-interaction "rennf93/guard-core-php:4.1.99"
+              composer require --no-update --no-interaction "rennf93/guard-core-php:4.2.99"
               composer update --no-interaction --no-progress "rennf93/guard-core-php"
               composer lint
               php bin/test_symfony.php
