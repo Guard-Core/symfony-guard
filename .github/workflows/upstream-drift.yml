@@ -43,6 +43,33 @@ jobs:
       # No host PHP toolchain: run the adapter suite inside the composer image,
       # pointing the guard-core-php dependency at upstream master via the
       # composer.json path repository (../guard-core-php).
+      - name: Resolve guard-core-php from the mounted checkout (CI-only patch)
+        run: |
+          python3 - <<'EOF'
+          import json
+
+          engine = "core-upstream/composer.json"
+          with open(engine) as f:
+              d = json.load(f)
+          d["version"] = "4.1.99"
+          with open(engine, "w") as f:
+              json.dump(d, f, indent=4)
+              f.write("\n")
+
+          with open("composer.json") as f:
+              d = json.load(f)
+          # Drop VCS entries: any github fallback hard-fails on anonymous API
+          # auth since the v4.1.0 yank; the engine comes from the mounted
+          # checkout instead.
+          d["repositories"] = [
+              repo for repo in d.get("repositories", [])
+              if repo.get("type") != "vcs"
+          ]
+          with open("composer.json", "w") as f:
+              json.dump(d, f, indent=4)
+              f.write("\n")
+          EOF
+
       - name: Run the adapter test suite against guard-core-php@master
         run: |
           docker run --rm --network host \
@@ -52,7 +79,7 @@ jobs:
             -e REDIS_HOST=127.0.0.1 \
             composer:2 sh -c '
               set -e
-              composer require --no-update --no-interaction "rennf93/guard-core-php:dev-master"
+              composer require --no-update --no-interaction "rennf93/guard-core-php:4.1.99"
               composer update --no-interaction --no-progress "rennf93/guard-core-php"
               composer lint
               php bin/test_symfony.php
