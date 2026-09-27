@@ -110,4 +110,13 @@ final class SymfonyGuardRequest implements GuardRequest
     {
         return $this->state;
     }
+
+    /**
+     * The wrapped Symfony request, for adapter resolvers that inspect
+     * framework-native surfaces (the resolved route, attributes, ...).
+     */
+    public function underlying(): Request
+    {
+        return $this->request;
+    }
 }

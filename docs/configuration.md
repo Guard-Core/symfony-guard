@@ -88,3 +88,32 @@ $config = new SecurityConfig(
     // ...
 );
 ```
+
+## Per-route configuration and pass-through wiring
+
+The middleware takes route configs and resolver hooks as its own options; the
+security content of each route still comes from the engine's `RouteConfig`.
+
+```php
+use RenzoFranceschini\GuardCore\Routing\RouteConfig;
+use RenzoFranceschini\GuardCoreSymfony\GuardMiddleware;
+
+$middleware = new GuardMiddleware(
+    $kernel,
+    new GuardEngine($config),
+    routes: [
+        '/open/' => new RouteConfig(enableSuspiciousDetection: false),
+        '/chatty/' => new RouteConfig(rateLimit: 5, rateLimitWindow: 60),
+    ],
+    geoRateLimitResolver: new MyCountryResolver(),   // powers RouteConfig geoRateLimits
+    routeResolver: null,                             // or fn (Request $r): ?RouteConfig
+);
+```
+
+On the pass-through path the middleware applies the engine's security headers
+(`securityHeaders`) and CORS verdict headers (`enableCors`, `corsAllow*`) to the
+kernel's response, and reports the response status plus a body prefix (bounded
+by `behaviorMaxResponseBodyInspectBytes`, scanned only when
+`behaviorScanResponseBody` is on) to the engine's behavioral return rules:
+`globalBehaviorRules` and route `behaviorRules` with `return_pattern` rules act
+on what the application actually served. Return rules never modify the response.

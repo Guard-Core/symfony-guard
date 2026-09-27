@@ -8,6 +8,7 @@ use RenzoFranceschini\GuardCore\Request\GuardRequest;
 use RenzoFranceschini\GuardCore\Request\GuardResponse;
 use RenzoFranceschini\GuardCore\Redis\GuardRedisException;
 use RenzoFranceschini\GuardCore\Redis\RedisHandler;
+use RenzoFranceschini\GuardCore\Routing\RouteConfig;
 use RenzoFranceschini\GuardCoreSymfony\GuardMiddleware;
 use RenzoFranceschini\GuardCoreSymfony\SymfonyGuardRequest;
 use Symfony\Component\HttpFoundation\Request;
@@ -112,6 +113,18 @@ final class ThrowingPathRequest extends Request
     public function getPathInfo(): string
     {
         throw new RuntimeException('malformed request path');
+    }
+}
+
+final class FakeCountryResolver implements \RenzoFranceschini\GuardCore\GeoIp\CountryResolver
+{
+    public function __construct(private readonly ?string $country)
+    {
+    }
+
+    public function getCountry(string $ip): ?string
+    {
+        return $this->country;
     }
 }
 
@@ -380,7 +393,184 @@ $t->ok((static function () use ($middleware, $terminateRequest): bool {
     }
 })(), 'terminate on a non-terminable kernel is a silent no-op');
 
+$t->section('pass-through security headers (engine responseHeaders on the way out)');
+$config = new SecurityConfig(enableRedis: false, enablePenetrationDetection: false);
+[$middleware, , $kernel] = makeStack($config);
+$passed = $middleware->handle(symfonyRequest('/page', '203.0.113.110'), HttpKernelInterface::MAIN_REQUEST);
+$t->same(200, $passed->getStatusCode(), 'pass-through status preserved');
+$t->same('downstream', $passed->getContent(), 'pass-through body preserved');
+$missing = array_diff_key(array_flip($securityHeaderKeys), $passed->headers->all());
+$t->same([], $missing, 'engine default security headers applied to the pass-through response');
+$extra = array_diff_key($passed->headers->all(), $allowedHeaders);
+$t->same([], $extra, 'pass-through response carries nothing beyond engine headers and framework basics');
+$config = new SecurityConfig(enableRedis: false, enablePenetrationDetection: false, securityHeaders: ['enabled' => false]);
+[$middleware, , $kernel] = makeStack($config);
+$passed = $middleware->handle(symfonyRequest('/page', '203.0.113.111'), HttpKernelInterface::MAIN_REQUEST);
+$t->same(true, array_diff_key(array_flip($securityHeaderKeys), $passed->headers->all()) !== [], 'headers disabled: no engine security headers on the pass-through response');
+
+$t->section('pass-through CORS response headers');
+$config = new SecurityConfig(enableRedis: false, enablePenetrationDetection: false, enableCors: true, corsAllowOrigins: ['https://app.test']);
+[$middleware, , $kernel] = makeStack($config);
+$passed = $middleware->handle(symfonyRequest('/page', '203.0.113.120', 'GET', '', '', ['Origin' => 'https://app.test']), HttpKernelInterface::MAIN_REQUEST);
+$t->same(['https://app.test'], $passed->headers->all('Access-Control-Allow-Origin'), 'allowed origin echoed onto the pass-through response');
+$kernel->response = new Response('downstream');
+$noOrigin = $middleware->handle(symfonyRequest('/page', '203.0.113.121'), HttpKernelInterface::MAIN_REQUEST);
+$t->same([], $noOrigin->headers->all('Access-Control-Allow-Origin'), 'no Origin header: no CORS headers on the pass-through response');
+$kernel->response = new Response('downstream');
+$disallowed = $middleware->handle(symfonyRequest('/page', '203.0.113.122', 'GET', '', '', ['Origin' => 'https://evil.test']), HttpKernelInterface::MAIN_REQUEST);
+$t->same([], $disallowed->headers->all('Access-Control-Allow-Origin'), 'disallowed origin: no CORS headers on the pass-through response');
+
+$t->section('behavior return rules over the pass-through response');
+$config = new SecurityConfig(
+    enableRedis: false,
+    enablePenetrationDetection: false,
+    globalBehaviorRules: [['rule_type' => 'return_pattern', 'threshold' => 1, 'pattern' => 'status:404', 'action' => 'ban', 'window' => 60]]
+);
+[$middleware, , $kernel] = makeStack($config);
+$kernel->response = new Response('nope', 404);
+$middleware->handle(symfonyRequest('/missing', '203.0.113.130'), HttpKernelInterface::MAIN_REQUEST);
+$middleware->handle(symfonyRequest('/missing', '203.0.113.130'), HttpKernelInterface::MAIN_REQUEST);
+$banned = $middleware->handle(symfonyRequest('/missing', '203.0.113.130'), HttpKernelInterface::MAIN_REQUEST);
+$t->same(403, $banned->getStatusCode(), 'status-only return rule banned the ip (threshold trips strictly greater)');
+$t->ok(str_contains($banned->getContent(), 'banned'), 'ban body reports the ban');
+
+$t->section('return rules with body patterns: scan flag and inspect-bytes budget');
+$marker = 'leaked-secret-trailer';
+$baseRules = [['rule_type' => 'return_pattern', 'threshold' => 1, 'pattern' => $marker, 'action' => 'ban', 'window' => 60]];
+$config = new SecurityConfig(
+    enableRedis: false,
+    enablePenetrationDetection: false,
+    behaviorScanResponseBody: true,
+    behaviorMaxResponseBodyInspectBytes: 1024,
+    globalBehaviorRules: $baseRules
+);
+[$middleware, , $kernel] = makeStack($config);
+$kernel->response = new Response(str_repeat('a', 900) . $marker, 200);
+$middleware->handle(symfonyRequest('/report', '203.0.113.131'), HttpKernelInterface::MAIN_REQUEST);
+$middleware->handle(symfonyRequest('/report', '203.0.113.131'), HttpKernelInterface::MAIN_REQUEST);
+$banned = $middleware->handle(symfonyRequest('/report', '203.0.113.131'), HttpKernelInterface::MAIN_REQUEST);
+$t->same(403, $banned->getStatusCode(), 'body pattern inside the inspect budget triggered the ban');
+
+$config = new SecurityConfig(
+    enableRedis: false,
+    enablePenetrationDetection: false,
+    behaviorScanResponseBody: true,
+    behaviorMaxResponseBodyInspectBytes: 1024,
+    globalBehaviorRules: $baseRules
+);
+[$middleware, , $kernel] = makeStack($config);
+$kernel->response = new Response(str_repeat('a', 1024) . $marker, 200);
+$passed = $middleware->handle(symfonyRequest('/report', '203.0.113.132'), HttpKernelInterface::MAIN_REQUEST);
+$t->same(200, $passed->getStatusCode(), 'marker at the budget edge stays unflagged and unmodified');
+$t->same(200, $middleware->handle(symfonyRequest('/report', '203.0.113.132'), HttpKernelInterface::MAIN_REQUEST)->getStatusCode(), 'pattern beyond the inspect budget never triggers');
+
+$config = new SecurityConfig(
+    enableRedis: false,
+    enablePenetrationDetection: false,
+    behaviorScanResponseBody: true,
+    behaviorMaxResponseBodyInspectBytes: 1024,
+    globalBehaviorRules: $baseRules
+);
+[$middleware, , $kernel] = makeStack($config);
+$bigBody = str_repeat('a', 5000) . $marker;
+$kernel->response = new Response($bigBody, 200);
+$passed = $middleware->handle(symfonyRequest('/report', '203.0.113.133'), HttpKernelInterface::MAIN_REQUEST);
+$t->same(strlen($bigBody), strlen((string) $passed->getContent()), 'large pass-through body not truncated by the capture');
+$t->throws(
+    \InvalidArgumentException::class,
+    static function () use ($baseRules): void {
+        new SecurityConfig(enableRedis: false, globalBehaviorRules: $baseRules, behaviorScanResponseBody: false);
+    },
+    'body pattern with scan off rejected at config construction'
+);
+
+$t->section('per-route config through the middleware route map');
+$hooks = [];
+$routeConfig = new RouteConfig(enableSuspiciousDetection: false);
+$middleware = new GuardMiddleware(
+    new RecordingKernel(),
+    new GuardEngine(new SecurityConfig(enableRedis: false, onBlock: hookCapture($hooks))),
+    routes: ['/open/' => $routeConfig]
+);
+$open = $middleware->handle(symfonyRequest('/open/section', '203.0.113.140', 'GET', $attackQuery), HttpKernelInterface::MAIN_REQUEST);
+$t->same(200, $open->getStatusCode(), 'attack on a route with detection disabled passes');
+$guarded = $middleware->handle(symfonyRequest('/search', '203.0.113.140', 'GET', $attackQuery), HttpKernelInterface::MAIN_REQUEST);
+$t->same(400, $guarded->getStatusCode(), 'same attack on an unconfigured route still blocks');
+
+$hooks = [];
+$config = new SecurityConfig(enableRedis: false, onBlock: hookCapture($hooks));
+$routeConfig = new RouteConfig(behaviorRules: [new \RenzoFranceschini\GuardCore\Behavior\BehaviorRule('usage', 1, window: 60, action: 'ban')]);
+$middleware = new GuardMiddleware(new RecordingKernel(), new GuardEngine($config), routes: ['/chatty/' => $routeConfig]);
+$middleware->handle(symfonyRequest('/chatty/feed', '203.0.113.141'), HttpKernelInterface::MAIN_REQUEST);
+$middleware->handle(symfonyRequest('/chatty/feed', '203.0.113.141'), HttpKernelInterface::MAIN_REQUEST);
+$banned = $middleware->handle(symfonyRequest('/chatty/feed', '203.0.113.141'), HttpKernelInterface::MAIN_REQUEST);
+$t->same(403, $banned->getStatusCode(), 'route usage rule banned the ip after the threshold');
+
+$seenPath = null;
+$config = new SecurityConfig(enableRedis: false);
+$middleware = new GuardMiddleware(
+    new RecordingKernel(),
+    new GuardEngine($config),
+    routeResolver: static function (Request $request) use (&$seenPath): ?RouteConfig {
+        $seenPath = $request->getPathInfo();
+
+        return $request->getPathInfo() === '/dynamic' ? new RouteConfig(enableSuspiciousDetection: false) : null;
+    }
+);
+$dynamic = $middleware->handle(symfonyRequest('/dynamic', '203.0.113.142', 'GET', $attackQuery), HttpKernelInterface::MAIN_REQUEST);
+$t->same('/dynamic', $seenPath, 'custom resolver received the raw Symfony request');
+$t->same(200, $dynamic->getStatusCode(), 'custom resolver route skips detection');
+$static = $middleware->handle(symfonyRequest('/search', '203.0.113.143', 'GET', $attackQuery), HttpKernelInterface::MAIN_REQUEST);
+$t->same(400, $static->getStatusCode(), 'custom resolver returning null keeps global enforcement');
+
+$t->section('geo country config through the public adapter surface');
+$hooks = [];
+$config = new SecurityConfig(
+    enableRedis: false,
+    enablePenetrationDetection: false,
+    blockedCountries: ['CN'],
+    geoIpHandler: new FakeCountryResolver('CN'),
+    onBlock: hookCapture($hooks)
+);
+[$middleware, , $kernel] = makeStack($config);
+$blockedCountry = $middleware->handle(symfonyRequest('/download', '203.0.113.150'), HttpKernelInterface::MAIN_REQUEST);
+$t->same(403, $blockedCountry->getStatusCode(), 'blocked country -> 403 through the adapter');
+$t->same('Forbidden', $blockedCountry->getContent(), 'country block body exact');
+$config = new SecurityConfig(
+    enableRedis: false,
+    enablePenetrationDetection: false,
+    whitelistCountries: ['DE'],
+    geoIpHandler: new FakeCountryResolver('CN')
+);
+[$middleware, , $kernel] = makeStack($config);
+$notAllowed = $middleware->handle(symfonyRequest('/download', '203.0.113.151'), HttpKernelInterface::MAIN_REQUEST);
+$t->same(403, $notAllowed->getStatusCode(), 'country outside the allowlist -> 403');
+$config = new SecurityConfig(
+    enableRedis: false,
+    enablePenetrationDetection: false,
+    whitelistCountries: ['DE'],
+    geoIpHandler: new FakeCountryResolver('DE')
+);
+[$middleware, , $kernel] = makeStack($config);
+$allowedCountry = $middleware->handle(symfonyRequest('/download', '203.0.113.152'), HttpKernelInterface::MAIN_REQUEST);
+$t->same(200, $allowedCountry->getStatusCode(), 'allowlisted country passes');
+
+$t->section('geo rate-limit tiers via the config geo resolver bridge');
+$config = new SecurityConfig(enableRedis: false, enablePenetrationDetection: false);
+$middleware = new GuardMiddleware(
+    new RecordingKernel(),
+    new GuardEngine($config),
+    routes: ['/geo/' => new RouteConfig(geoRateLimits: ['CN' => ['limit' => 1, 'window' => 60]])],
+    geoRateLimitResolver: new FakeCountryResolver('CN')
+);
+$geoReq = symfonyRequest('/geo/data', '203.0.113.160');
+$t->same(200, $middleware->handle($geoReq, HttpKernelInterface::MAIN_REQUEST)->getStatusCode(), 'geo tier hit 1 passes');
+$limited = $middleware->handle(symfonyRequest('/geo/data', '203.0.113.160'), HttpKernelInterface::MAIN_REQUEST);
+$t->same(429, $limited->getStatusCode(), 'geo tier hit 2 -> 429');
+$t->same(['60'], $limited->headers->all('Retry-After'), 'geo tier Retry-After carries the tier window');
+
 $t->section('fail-closed on engine malfunction (conformance.md)');
+
 $config = new SecurityConfig(enableRedis: false);
 [$middleware, , $kernel] = makeStack($config);
 $malformed = $middleware->handle(new ThrowingPathRequest([], [], [], [], [], ['REMOTE_ADDR' => '203.0.113.90']), HttpKernelInterface::MAIN_REQUEST);
