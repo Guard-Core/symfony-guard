@@ -99,3 +99,70 @@ jobs:
         if: always()
         run: |
           docker compose -p "$LIVE_SMOKE_PROJECT" -f examples/simple_app/docker-compose.yml down -v --remove-orphans
+
+  live-smoke-advanced:
+    name: Dockerized smoke run (advanced_app)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+
+    env:
+      LIVE_SMOKE_PROJECT: symfony-guard-live-smoke-advanced
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Bring the smoke stack up (guarded app + redis)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          docker compose -p "$LIVE_SMOKE_PROJECT" -f examples/advanced_app/docker-compose.yml up --build -d --wait
+
+      - name: Run smoke assertions
+        run: |
+          set -euo pipefail
+          base="http://localhost:8081"
+
+          check() {
+            local name="$1" expected="$2"; shift 2
+            local code body
+            body=$(curl -sS --max-time 10 -o /tmp/smoke_body_adv -w '%{http_code}' "$@") || {
+              echo "FAIL: $name (curl error)"; exit 1
+            }
+            code="$body"
+            if [ "$code" != "$expected" ]; then
+              echo "FAIL: $name (expected $expected, got $code)"
+              echo "body: $(cat /tmp/smoke_body_adv)"
+              exit 1
+            fi
+            echo "ok: $name -> $code"
+          }
+
+          check "GET / serves"                 200 "$base/"
+          check "GET /health (excluded path)"  200 "$base/health"
+
+          # Admin gate: /admin/* requires X-Admin-Token; the example's
+          # custom_request check rejects a missing header with 400 before
+          # the handler runs.
+          code=$(curl -sS --max-time 10 -o /tmp/smoke_body_adv -w '%{http_code}' "$base/admin/check?ip=203.0.113.9")
+          if [ "$code" != "400" ]; then
+            echo "FAIL: /admin/check without token (expected 400, got $code)"; exit 1
+          fi
+          grep -q "Missing required header: X-Admin-Token" /tmp/smoke_body_adv || {
+            echo "FAIL: missing-token body"; exit 1
+          }
+          echo "ok: /admin/check without token -> 400 missing required header"
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: |
+          docker compose -p "$LIVE_SMOKE_PROJECT" -f examples/advanced_app/docker-compose.yml logs --no-color
+
+      - name: Bring the smoke stack down
+        if: always()
+        run: |
+          docker compose -p "$LIVE_SMOKE_PROJECT" -f examples/advanced_app/docker-compose.yml down -v --remove-orphans

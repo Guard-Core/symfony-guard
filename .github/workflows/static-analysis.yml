@@ -1,0 +1,93 @@
+name: Static Analysis
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  schedule:
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: static-analysis-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  phpstan:
+    name: PHPStan (level 3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Checkout guard-core-php (path repository)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: rennf93/guard-core-php
+          ref: master
+          path: core-checkout
+          persist-credentials: false
+
+      - name: Place guard-core-php at the path repository location
+        run: mv core-checkout ../guard-core-php
+
+      # Same CI-only patch as ci.yml: stamp a version onto the engine
+      # checkout's composer.json and drop the engine VCS repo entry, so the
+      # path repository resolves without git. Published files are untouched.
+      - name: Resolve guard-core-php from the path repository (CI-only patch)
+        run: |
+          python3 - <<'EOF'
+          import json
+
+          engine = "../guard-core-php/composer.json"
+          with open(engine) as f:
+              d = json.load(f)
+          d["version"] = "4.2.99"
+          with open(engine, "w") as f:
+              json.dump(d, f, indent=4)
+              f.write("\n")
+
+          with open("composer.json") as f:
+              d = json.load(f)
+          d["repositories"] = [
+              repo
+              for repo in d.get("repositories", [])
+              if not (
+                  repo.get("type") == "vcs"
+                  and "guard-core-php" in repo.get("url", "")
+              )
+          ]
+          with open("composer.json", "w") as f:
+              json.dump(d, f, indent=4)
+              f.write("\n")
+          EOF
+
+      # No host PHP toolchain: composer:2 installs the suite (the parent
+      # workspace mount carries the ../guard-core-php path repository), then
+      # the phpstan image analyses src/ against the installed autoload.
+      - name: Install dependencies (composer:2)
+        run: |
+          docker run --rm \
+            -v "$(dirname "$GITHUB_WORKSPACE")":/work \
+            -w "/work/$(basename "$GITHUB_WORKSPACE")" \
+            composer:2 sh -c 'composer install --no-interaction --no-progress && composer update rennf93/guard-core-php --no-interaction'
+
+      # Level 3 is the highest level with zero findings on master; the
+      # ceiling was probed with this exact image before adopting the job.
+      - name: PHPStan analyse (level 3)
+        run: |
+          docker run --rm \
+            -v "$(dirname "$GITHUB_WORKSPACE")":/work \
+            -w "/work/$(basename "$GITHUB_WORKSPACE")" \
+            ghcr.io/phpstan/phpstan:latest analyse src --level=3 --no-progress
