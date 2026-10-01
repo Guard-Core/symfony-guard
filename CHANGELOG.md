@@ -3,6 +3,24 @@ Release Notes
 
 ___
 
+v1.3.0 (2026-10-01)
+-------------------
+
+### Changed
+
+- **Engine floor raised to guard-core-php ^4.3.0, the safety-corpus release.** 1.3.0 floors `rennf93/guard-core-php` to ^4.3.0 and picks up the 4.3.0 engine train: the spec 12 event bus with dynamic rules and Redis-backed metrics persistence, the spec 10 geo download and refresh lifecycle, the spec 04 ReDoS safety gates over PCRE plus the performance monitor, and the pattern_safety / events / redis_interop conformance runners. Nothing in the Symfony surface changes: the middleware is a thin adapter, so the new engine surfaces ride config through the unchanged option map. The CI engine checkout stamps the mounted sibling path checkout at 4.3.99 (ci.yml, release.yml, static-analysis.yml, upstream-drift.yml, scheduled-lint.yml) so the floor resolves against the engine master while keeping the published constraint ^4.3.0, and `composer.lock` resolves the engine at the released v4.3.0.
+
+### Added
+
+- **Process scaffold (PR #16).** `SECURITY.md` (supported versions, advisory reporting), `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `.github/FUNDING.yml`, the PR template and the issue templates, modeled on the Go family and the fastapi-guard baseline. `.github/workflows/static-analysis.yml`: phpstan via the docker pattern these repos already use (composer:2 install with the same ci-only path-repository patch as ci.yml, then `ghcr.io/phpstan/phpstan:latest analyse src --level=3`), on push/pr to master plus the weekly Monday cron; level 3 is the highest level with zero findings on master. `.github/workflows/live-smoke.yml` gains the `live-smoke-advanced` job (the existing simple_app job untouched): a dockerized run of `examples/advanced_app` on host port 8081 asserting `GET /` and `GET /health` 200 plus one blocked-request check (`GET /admin/check?ip=203.0.113.9` without `X-Admin-Token` returns the admin gate's 400 "Missing required header: X-Admin-Token"). CodeQL was drafted and dropped after the first run proved GitHub CodeQL no longer supports PHP (`Did not recognize the following languages: php`); `.github/workflows/semgrep.yml` is the substitute, running the pinned semgrep/semgrep:1.177.0 container with the p/security-audit and p/secrets rulesets over src/ (path-filtered push/PR triggers plus a weekly Monday cron, metrics off).
+- **100% line coverage gate (PR #17, following the psr15-guard pilot).** The bespoke `bin/test_symfony.php` suite stays as it is; `.github/coverage-runner.php` (phpunit/php-code-coverage ^11 + pcov) executes the suite under coverage and the new CI coverage job gates on 100.00% measured lines in src/. The suite already measured 100.00% lines locally (pcov, php 8.3), with and without a reachable redis, so no test changes were needed; the job mirrors ci.yml's path-repo sibling pattern (php 8.3, coverage: pcov) and suite pass/fail stays gated by the existing test job.
+
+### Verification
+
+- `make lint` exit 0 and `make test` exit 0 on php 8.5.11 (host Redis on 6379, 120/120 checks green), with `composer.lock` resolving guard-core-php v4.3.0.
+
+___
+
 v1.2.0 (2026-09-27)
 -------------------
 

@@ -52,7 +52,7 @@ jobs:
           engine = "../guard-core-php/composer.json"
           with open(engine) as f:
               d = json.load(f)
-          d["version"] = "4.2.99"
+          d["version"] = "4.3.99"
           with open(engine, "w") as f:
               json.dump(d, f, indent=4)
               f.write("\n")
@@ -122,7 +122,7 @@ jobs:
           engine = "../guard-core-php/composer.json"
           with open(engine) as f:
               d = json.load(f)
-          d["version"] = "4.2.99"
+          d["version"] = "4.3.99"
           with open(engine, "w") as f:
               json.dump(d, f, indent=4)
               f.write("\n")
