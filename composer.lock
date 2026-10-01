@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "880374a8d90ad541322214d13ecaade1",
+    "content-hash": "0dc44271c8712ade4201d3b3da96f3cb",
     "packages": [
         {
             "name": "psr/event-dispatcher",
@@ -108,16 +108,16 @@
         },
         {
             "name": "rennf93/guard-core-php",
-            "version": "v4.2.0",
+            "version": "v4.3.0",
             "source": {
                 "type": "git",
-                "url": "git@github.com:rennf93/guard-core-php.git",
-                "reference": "388d4d1e134b71062b6a18a86a46ba5bdd789571"
+                "url": "https://github.com/rennf93/guard-core-php.git",
+                "reference": "fe1b6ba14f091397d5588d335be1a59194b8b971"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/rennf93/guard-core-php/zipball/388d4d1e134b71062b6a18a86a46ba5bdd789571",
-                "reference": "388d4d1e134b71062b6a18a86a46ba5bdd789571",
+                "url": "https://api.github.com/repos/rennf93/guard-core-php/zipball/fe1b6ba14f091397d5588d335be1a59194b8b971",
+                "reference": "fe1b6ba14f091397d5588d335be1a59194b8b971",
                 "shasum": ""
             },
             "require": {
@@ -125,6 +125,9 @@
                 "ext-mbstring": "*",
                 "ext-pcre": "*",
                 "php": "^8.2"
+            },
+            "require-dev": {
+                "phpunit/php-code-coverage": "^11.0"
             },
             "type": "library",
             "autoload": {
@@ -144,7 +147,21 @@
                 "MIT"
             ],
             "description": "PHP port of guard-core: behavioral WAF engine (detection engine conformance milestone)",
-            "time": "2026-09-27T18:43:50+00:00"
+            "support": {
+                "source": "https://github.com/rennf93/guard-core-php/tree/v4.3.0",
+                "issues": "https://github.com/rennf93/guard-core-php/issues"
+            },
+            "funding": [
+                {
+                    "type": "github",
+                    "url": "https://github.com/rennf93"
+                },
+                {
+                    "type": "custom",
+                    "url": "https://paypal.me/renzof93"
+                }
+            ],
+            "time": "2026-10-01T20:08:35+00:00"
         },
         {
             "name": "symfony/deprecation-contracts",
