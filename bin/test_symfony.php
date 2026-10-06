@@ -660,6 +660,45 @@ function runRedisIntegration(T $t): void
     }
 }
 
+
+// === Parity: longest-path route config, agent wiring, status controller ===
+$engineP = new GuardEngine(new SecurityConfig(enableRedis: false));
+$engineP->initialize();
+$specific = new RouteConfig(rateLimit: 2, rateLimitWindow: 60);
+$general = new RouteConfig();
+$kernelP = new class implements Symfony\Component\HttpKernel\HttpKernelInterface {
+    public function handle(
+        Symfony\Component\HttpFoundation\Request $request,
+        int $type = self::MAIN_REQUEST,
+        bool $catch = false
+    ): Symfony\Component\HttpFoundation\Response {
+        return new Symfony\Component\HttpFoundation\Response('ok');
+    }
+};
+$mwP = new GuardMiddleware(
+    $kernelP,
+    $engineP,
+    routes: ['/api/' => $general, '/api/orders' => $specific],
+    agentHandler: new class {
+        public array $events = [];
+        public function sendEvent(object $event): void
+        {
+            $this->events[] = $event;
+        }
+    }
+);
+$reflect = new ReflectionClass($mwP);
+$sorted = $reflect->getProperty('sortedRoutes')->getValue($mwP);
+$t->same(['/api/orders', '/api/'], array_keys($sorted), 'routes sort most-specific-first regardless of insertion order');
+$resolve = $reflect->getMethod('resolveRouteConfig');
+$sfReq = Symfony\Component\HttpFoundation\Request::create('/api/orders');
+$sfReq->attributes->set('_controller', 'TestController');
+$guardReq = new SymfonyGuardRequest($sfReq);
+$t->same($specific, $resolve->invoke($mwP, $guardReq), 'longest pattern wins for /api/orders');
+$statusCtl = new \RenzoFranceschini\GuardCoreSymfony\GuardStatusController($engineP);
+$payload = json_decode($statusCtl()->getContent(), true);
+$t->ok(isset($payload['redis']), 'status controller serves initialization status JSON');
+
 $total = $t->passed + $t->failed;
 echo "\nPassed: {$t->passed}, Failed: {$t->failed}\n";
 echo "{$t->passed}/{$total}" . ($t->failed === 0 ? ' GREEN' : ' RED') . "\n";
