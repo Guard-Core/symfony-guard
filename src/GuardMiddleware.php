@@ -32,15 +32,22 @@ final class GuardMiddleware implements HttpKernelInterface, TerminableInterface
      *     config's geo_ip_handler when that carries one (the config keeps
      *     an injected handler only when country lists are configured)
      */
+    private array $sortedRoutes = [];
+
     public function __construct(
         private readonly HttpKernelInterface $kernel,
         private readonly GuardEngine $engine,
         private readonly array $routes = [],
         private readonly ?Closure $routeResolver = null,
-        ?CountryResolver $geoRateLimitResolver = null
+        ?CountryResolver $geoRateLimitResolver = null,
+        ?object $agentHandler = null
     ) {
         $this->translator = new ResponseTranslator();
+        $this->sortedRoutes = self::sortRoutesLongestFirst($this->routes);
         $this->wireGeoRateLimitResolver($geoRateLimitResolver);
+        if ($agentHandler !== null) {
+            $engine->setAgentHandler($agentHandler);
+        }
         try {
             $engine->initialize();
         } catch (GuardRedisException $e) {
@@ -113,6 +120,19 @@ final class GuardMiddleware implements HttpKernelInterface, TerminableInterface
         return $response;
     }
 
+    /**
+     * Most-specific-first ordering: patterns sort by length descending, so
+     * when several patterns match a path the longest (most specific) wins
+     * regardless of the order the user supplied them in. Mirrors the TS
+     * resolver's longest-path rule and the reference adapter's semantics.
+     */
+    private static function sortRoutesLongestFirst(array $routes): array
+    {
+        uksort($routes, static fn (string $a, string $b): int => strlen($b) <=> strlen($a));
+
+        return $routes;
+    }
+
     private function attachRouteConfig(SymfonyGuardRequest $guardRequest): void
     {
         $routeConfig = $this->resolveRouteConfig($guardRequest);
@@ -128,7 +148,7 @@ final class GuardMiddleware implements HttpKernelInterface, TerminableInterface
             return ($this->routeResolver)($guardRequest->underlying());
         }
 
-        foreach ($this->routes as $pattern => $routeConfig) {
+        foreach ($this->sortedRoutes as $pattern => $routeConfig) {
             if (self::matchesRoutePattern($pattern, $guardRequest->urlPath())) {
                 return $routeConfig;
             }
