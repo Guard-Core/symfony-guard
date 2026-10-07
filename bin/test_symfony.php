@@ -699,6 +699,66 @@ $statusCtl = new \RenzoFranceschini\GuardCoreSymfony\GuardStatusController($engi
 $payload = json_decode($statusCtl()->getContent(), true);
 $t->ok(isset($payload['redis']), 'status controller serves initialization status JSON');
 
+// === Parity: agent_stats, reset, refresh_cloud_ip_ranges, method-scoped routes ===
+
+$t->section('agent_stats accessor');
+$kernelStub = new class implements Symfony\Component\HttpKernel\HttpKernelInterface {
+    public function handle(Request $request, int $type = Symfony\Component\HttpKernel\HttpKernelInterface::MAIN_REQUEST, bool $catch = true): Response
+    {
+        return new Response('downstream');
+    }
+};
+$noAgentMw = new GuardMiddleware($kernelStub, new GuardEngine(new SecurityConfig(enableRedis: false)));
+$t->same(['enabled' => false, 'degraded' => false], $noAgentMw->agentStats(), 'no handler reports disabled');
+$statsMw = new GuardMiddleware($kernelStub, new GuardEngine(new SecurityConfig(enableRedis: false)), agentHandler: new class {
+    public function sendEvent(object $event): void
+    {
+    }
+
+    public function getStats(): array
+    {
+        return ['buffer_size' => 2, 'degraded' => true];
+    }
+});
+$stats = $statsMw->agentStats();
+$t->same(true, $stats['enabled'], 'a handler reports enabled');
+$t->same(2, $stats['buffer_size'], 'the handler stats flow through');
+$bareMw = new GuardMiddleware($kernelStub, new GuardEngine(new SecurityConfig(enableRedis: false)), agentHandler: new class {
+    public function sendEvent(object $event): void
+    {
+    }
+});
+$t->same(['enabled' => true, 'degraded' => false], $bareMw->agentStats(), 'a handler without getStats reports the enabled pair only');
+
+$t->section('middleware reset');
+$resetMw = new GuardMiddleware($kernelStub, new GuardEngine(new SecurityConfig(enableRedis: false)));
+$resetMw->reset();
+$t->ok(true, 'reset runs without redis (state cleared, no distributed keys to flush)');
+
+$t->section('refresh_cloud_ip_ranges');
+$noCloudMw = new GuardMiddleware($kernelStub, new GuardEngine(new SecurityConfig(enableRedis: false)));
+$noCloudMw->refreshCloudIpRanges();
+$t->ok(true, 'cloud blocking off: refresh is a no-op');
+$cloudMw = new GuardMiddleware(
+    $kernelStub,
+    new GuardEngine(
+        new SecurityConfig(enableRedis: false, blockCloudProviders: ['AWS']),
+        cloudManager: new \RenzoFranceschini\GuardCore\Cloud\CloudManager(null, new \RenzoFranceschini\GuardCore\Cloud\InMemoryCloudIpStore())
+    )
+);
+$cloudMw->refreshCloudIpRanges();
+$t->ok(true, 'cloud blocking on: refresh runs against the store (fetch failures log, never raise)');
+
+$t->section('method-scoped route patterns');
+$mMw = new GuardMiddleware($kernelStub, new GuardEngine(new SecurityConfig(enableRedis: false)), routes: ['GET /api' => $getOnly = new RouteConfig(requireHttps: true), '/api' => $anyMethod = new RouteConfig()]);
+$mResolve = (new ReflectionClass($mMw))->getMethod('resolveRouteConfig');
+$t->same($getOnly, $mResolve->invoke($mMw, new SymfonyGuardRequest(Request::create('/api', 'GET'))), 'the method-scoped pattern wins for GET');
+$t->same($anyMethod, $mResolve->invoke($mMw, new SymfonyGuardRequest(Request::create('/api', 'POST'))), 'the bare pattern answers other methods');
+$mixedMw = new GuardMiddleware($kernelStub, new GuardEngine(new SecurityConfig(enableRedis: false)), routes: ['/api/users' => $anyMethod, 'POST /api' => $getOnly]);
+$mixedResolve = (new ReflectionClass($mixedMw))->getMethod('resolveRouteConfig');
+$t->same($anyMethod, $mixedResolve->invoke($mixedMw, new SymfonyGuardRequest(Request::create('/api/users', 'POST'))), 'a longer bare pattern beats a shorter method-scoped one');
+$t->same(null, $mixedResolve->invoke($mixedMw, new SymfonyGuardRequest(Request::create('/other', 'GET'))), 'no match attaches nothing');
+
 $total = $t->passed + $t->failed;
 echo "\nPassed: {$t->passed}, Failed: {$t->failed}\n";
 echo "{$t->passed}/{$total}" . ($t->failed === 0 ? ' GREEN' : ' RED') . "\n";
