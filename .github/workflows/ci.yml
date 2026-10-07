@@ -37,54 +37,6 @@ jobs:
         with:
           persist-credentials: false
 
-      # Supply-chain tradeoff, deliberate: this pins a MOVING branch of the core
-      # engine, not an immutable ref, because the core has no Packagist dist yet.
-      # The composer.json constraint is the tagged ^0.1.0 and the lock pins
-      # v0.1.0; the path repository plus this update step only float within
-      # that constraint. Once the core publishes to Packagist, this step and
-      # the path repository can drop in favor of the distribution channel.
-      - name: Checkout guard-core-php (path repository)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: rennf93/guard-core-php
-          ref: feat/parity-agent-seam-status-route
-          path: core-checkout
-          persist-credentials: false
-
-      - name: Place guard-core-php at the path repository location
-        run: mv core-checkout ../guard-core-php
-
-      - name: Resolve guard-core-php from the path repository (CI-only patch)
-        run: |
-          python3 - <<'EOF'
-          import json
-
-          engine = "../guard-core-php/composer.json"
-          with open(engine) as f:
-              d = json.load(f)
-          # The adapter constraint is dev-feat/parity-agent-seam-status-route
-          # (aliased v4.3.1): stamp exactly that dev-* version, because a
-          # real x.y.z stamp cannot satisfy a dev-* constraint.
-          d["version"] = "dev-feat/parity-agent-seam-status-route"
-          with open(engine, "w") as f:
-              json.dump(d, f, indent=4)
-              f.write("\n")
-
-          with open("composer.json") as f:
-              d = json.load(f)
-          d["repositories"] = [
-              repo
-              for repo in d.get("repositories", [])
-              if not (
-                  repo.get("type") == "vcs"
-                  and "guard-core-php" in repo.get("url", "")
-              )
-          ]
-          with open("composer.json", "w") as f:
-              json.dump(d, f, indent=4)
-              f.write("\n")
-          EOF
-
       - name: Set up PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
@@ -95,7 +47,6 @@ jobs:
       - name: Install dependencies
         run: |
           composer install --no-interaction --no-progress
-          composer update rennf93/guard-core-php --no-interaction
 
       - name: php -l sweep
         run: for f in $(find src bin -name '*.php'); do php -l "$f" > /dev/null || exit 1; done && echo LINT_OK
@@ -116,48 +67,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Checkout guard-core-php (path repository)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: rennf93/guard-core-php
-          ref: feat/parity-agent-seam-status-route
-          path: core-checkout
-          persist-credentials: false
-
-      - name: Place guard-core-php at the path repository location
-        run: mv core-checkout ../guard-core-php
-
-      - name: Resolve guard-core-php from the path repository (CI-only patch)
-        run: |
-          python3 - <<'EOF'
-          import json
-
-          engine = "../guard-core-php/composer.json"
-          with open(engine) as f:
-              d = json.load(f)
-          # The adapter constraint is dev-feat/parity-agent-seam-status-route
-          # (aliased v4.3.1): stamp exactly that dev-* version, because a
-          # real x.y.z stamp cannot satisfy a dev-* constraint.
-          d["version"] = "dev-feat/parity-agent-seam-status-route"
-          with open(engine, "w") as f:
-              json.dump(d, f, indent=4)
-              f.write("\n")
-
-          with open("composer.json") as f:
-              d = json.load(f)
-          d["repositories"] = [
-              repo
-              for repo in d.get("repositories", [])
-              if not (
-                  repo.get("type") == "vcs"
-                  and "guard-core-php" in repo.get("url", "")
-              )
-          ]
-          with open("composer.json", "w") as f:
-              json.dump(d, f, indent=4)
-              f.write("\n")
-          EOF
-
       - name: Set up PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
@@ -167,7 +76,6 @@ jobs:
       - name: Install dependencies
         run: |
           composer install --no-interaction --no-progress
-          composer update rennf93/guard-core-php --no-interaction
 
       - name: Composer audit
         run: composer audit
@@ -182,48 +90,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Checkout guard-core-php (path repository)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: rennf93/guard-core-php
-          ref: feat/parity-agent-seam-status-route
-          path: core-checkout
-          persist-credentials: false
-
-      - name: Place guard-core-php at the path repository location
-        run: mv core-checkout ../guard-core-php
-
-      - name: Resolve guard-core-php from the path repository (CI-only patch)
-        run: |
-          python3 - <<'EOF'
-          import json
-
-          engine = "../guard-core-php/composer.json"
-          with open(engine) as f:
-              d = json.load(f)
-          # The adapter constraint is dev-feat/parity-agent-seam-status-route
-          # (aliased v4.3.1): stamp exactly that dev-* version, because a
-          # real x.y.z stamp cannot satisfy a dev-* constraint.
-          d["version"] = "dev-feat/parity-agent-seam-status-route"
-          with open(engine, "w") as f:
-              json.dump(d, f, indent=4)
-              f.write("\n")
-
-          with open("composer.json") as f:
-              d = json.load(f)
-          d["repositories"] = [
-              repo
-              for repo in d.get("repositories", [])
-              if not (
-                  repo.get("type") == "vcs"
-                  and "guard-core-php" in repo.get("url", "")
-              )
-          ]
-          with open("composer.json", "w") as f:
-              json.dump(d, f, indent=4)
-              f.write("\n")
-          EOF
-
       - name: Set up PHP with pcov
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
         with:
@@ -234,7 +100,6 @@ jobs:
       - name: Install dependencies
         run: |
           composer install --no-interaction --no-progress
-          composer update rennf93/guard-core-php --no-interaction
 
       - name: Enforce 100% line coverage
         env:

@@ -41,8 +41,9 @@ jobs:
           persist-credentials: false
 
       # No host PHP toolchain: run the adapter suite inside the composer image,
-      # pointing the guard-core-php dependency at upstream master via the
-      # composer.json path repository (../guard-core-php).
+      # pointing the guard-core-php dependency at upstream master via a path
+      # repository this job injects (../guard-core-php inside the image is the
+      # mounted core-upstream checkout).
       - name: Resolve guard-core-php from the mounted checkout (CI-only patch)
         run: |
           python3 - <<'EOF'
@@ -58,12 +59,12 @@ jobs:
 
           with open("composer.json") as f:
               d = json.load(f)
-          # Drop VCS entries: any github fallback hard-fails on anonymous API
-          # auth since the v4.1.0 yank; the engine comes from the mounted
-          # checkout instead.
+          # Drift-job-only engine swap: composer.json itself carries no
+          # repositories anymore (the engine resolves from Packagist in CI),
+          # so this job swaps every source out for a path repository pointing
+          # at the mounted master checkout.
           d["repositories"] = [
-              repo for repo in d.get("repositories", [])
-              if repo.get("type") != "vcs"
+              {"type": "path", "url": "../guard-core-php", "canonical": True}
           ]
           with open("composer.json", "w") as f:
               json.dump(d, f, indent=4)
