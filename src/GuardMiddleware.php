@@ -163,7 +163,7 @@ final class GuardMiddleware implements HttpKernelInterface, TerminableInterface
             new GuardResponse($response->getStatusCode(), body: $body)
         );
 
-        foreach ($this->engine->responseHeaders() as $name => $value) {
+        foreach ($this->engine->responseHeaders($guardRequest) as $name => $value) {
             $response->headers->set($name, $value);
         }
         foreach ($this->engine->corsResponseHeaders($guardRequest) as $name => $value) {

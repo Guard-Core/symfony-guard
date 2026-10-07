@@ -759,6 +759,16 @@ $mixedResolve = (new ReflectionClass($mixedMw))->getMethod('resolveRouteConfig')
 $t->same($anyMethod, $mixedResolve->invoke($mixedMw, new SymfonyGuardRequest(Request::create('/api/users', 'POST'))), 'a longer bare pattern beats a shorter method-scoped one');
 $t->same(null, $mixedResolve->invoke($mixedMw, new SymfonyGuardRequest(Request::create('/other', 'GET'))), 'no match attaches nothing');
 
+$t->section('responseHeaders carries the guard request');
+$hdrEngine = new GuardEngine(new SecurityConfig(enableRedis: false));
+$hdrEngine->initialize();
+$hdrRequest = new SymfonyGuardRequest(Request::create('/hdr-check'));
+$plainHeaders = $hdrEngine->responseHeaders();
+$requestHeaders = $hdrEngine->responseHeaders($hdrRequest);
+$t->same($plainHeaders, $requestHeaders, 'the guard request does not change the header set');
+$t->ok($requestHeaders !== [], 'the default header set is non-empty');
+
+
 $total = $t->passed + $t->failed;
 echo "\nPassed: {$t->passed}, Failed: {$t->failed}\n";
 echo "{$t->passed}/{$total}" . ($t->failed === 0 ? ' GREEN' : ' RED') . "\n";
