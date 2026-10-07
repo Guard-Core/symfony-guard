@@ -5,7 +5,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
-        "rennf93/guard-core-php": "dev-feat/parity-agent-seam-status-route as v4.3.1",
+        "rennf93/guard-core-php": "^4.3.1",
         "symfony/http-foundation": "^6.4|^7.0",
         "symfony/http-kernel": "^6.4|^7.0"
     },
