@@ -3,6 +3,23 @@ Release Notes
 
 ___
 
+v1.4.0 (2026-10-07)
+-------------------
+
+### Changed
+
+- **Engine constraint repinned to guard-core-php ^4.3.1, the shipped parity release.** `composer.json` floors `rennf93/guard-core-php` at the released `^4.3.1` and `composer.lock` resolves it at v4.3.1 from packagist, replacing the dev-master alias; everything resolves from the registry with no path or VCS repository entries.
+
+### Added
+
+- **FP-PHP parity surface (PR #20).** Route patterns resolve most-specific-first (length-descending), so the longest matching path pattern wins regardless of insertion order, closing the first-match insertion-order divergence with the reference implementations. An optional `agentHandler` constructor argument wires a duck-typed agent (`sendEvent`) into the engine's event bus. `GuardStatusController` serves `GuardEngine::initializationStatus()` as JSON, mirroring fastapi-guard's status route.
+
+### Verification
+
+- Local gates on php 8.5.11: `composer validate` exit 0, `composer audit --locked` clean (zero open advisories), `make lint` exit 0, and `bin/test_symfony.php` 123/123 checks green with host Redis on 6379 (includes the three new parity assertions), with `composer.lock` resolving guard-core-php v4.3.1. PHPStan level 3 via the `ghcr.io/phpstan/phpstan:latest` image: no errors. Dockerized live smoke (examples/simple_app, port 8080): all six workflow assertions green.
+
+___
+
 v1.3.0 (2026-10-01)
 -------------------
 
