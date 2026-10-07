@@ -43,21 +43,8 @@ jobs:
       # v0.1.0; the path repository plus this update step only float within
       # that constraint. Once the core publishes to Packagist, this step and
       # the path repository can drop in favor of the distribution channel.
-      - name: Checkout guard-core-php (path repository)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: rennf93/guard-core-php
-          ref: master
-          path: core-checkout
-          persist-credentials: false
 
-      - name: Place guard-core-php at the path repository location
-        run: mv core-checkout ../guard-core-php
 
-      - name: Resolve guard-core-php from the path repository (CI-only patch)
-        run: |
-          python3 - <<'EOF'
-          import json
 
           engine = "../guard-core-php/composer.json"
           with open(engine) as f:
@@ -113,21 +100,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Checkout guard-core-php (path repository)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: rennf93/guard-core-php
-          ref: master
-          path: core-checkout
-          persist-credentials: false
 
-      - name: Place guard-core-php at the path repository location
-        run: mv core-checkout ../guard-core-php
 
-      - name: Resolve guard-core-php from the path repository (CI-only patch)
-        run: |
-          python3 - <<'EOF'
-          import json
 
           engine = "../guard-core-php/composer.json"
           with open(engine) as f:
@@ -176,21 +150,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Checkout guard-core-php (path repository)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: rennf93/guard-core-php
-          ref: master
-          path: core-checkout
-          persist-credentials: false
 
-      - name: Place guard-core-php at the path repository location
-        run: mv core-checkout ../guard-core-php
 
-      - name: Resolve guard-core-php from the path repository (CI-only patch)
-        run: |
-          python3 - <<'EOF'
-          import json
 
           engine = "../guard-core-php/composer.json"
           with open(engine) as f:
