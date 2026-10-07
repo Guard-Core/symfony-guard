@@ -689,7 +689,7 @@ $mwP = new GuardMiddleware(
 );
 $reflect = new ReflectionClass($mwP);
 $sorted = $reflect->getProperty('sortedRoutes')->getValue($mwP);
-$t->same(['/api/orders', '/api/'], array_keys($sorted), 'routes sort most-specific-first regardless of insertion order');
+$t->same(['/api/orders', '/api/'], array_map(static fn (array $entry): string => $entry['path'], $sorted), 'routes sort most-specific-first regardless of insertion order');
 $resolve = $reflect->getMethod('resolveRouteConfig');
 $sfReq = Symfony\Component\HttpFoundation\Request::create('/api/orders');
 $sfReq->attributes->set('_controller', 'TestController');
