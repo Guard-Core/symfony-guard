@@ -6,7 +6,7 @@
     "require": {
         "php": "^8.2",
         "rennf93/symfony-guard": "dev-master",
-        "rennf93/guard-core-php": "^4.0.4",
+        "rennf93/guard-core-php": "^4.0.4 || dev-master",
         "symfony/http-foundation": "^7.0",
         "symfony/http-kernel": "^7.0"
     },
@@ -16,8 +16,14 @@
         }
     },
     "repositories": [
-        { "type": "vcs", "url": "https://github.com/rennf93/guard-core-php" },
-        { "type": "vcs", "url": "https://github.com/rennf93/symfony-guard" }
+        {
+            "type": "vcs",
+            "url": "https://github.com/rennf93/guard-core-php"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/rennf93/symfony-guard"
+        }
     ],
     "minimum-stability": "dev",
     "prefer-stable": true,
