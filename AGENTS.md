@@ -3,7 +3,7 @@ Guidance for AI agents (including Claude Code) working in this repository.
 
 ## Project Overview
 
-rennf93/symfony-guard (https://github.com/rennf93/symfony-guard) is a Symfony middleware adapter for guard-core-php. It maps `Symfony\Component\HttpFoundation\Request` objects into the guard-core engine and translates the engine's block verdicts back to Symfony-native responses. It works with Symfony 6.4 LTS and 7.x.
+rennf93/symfony-guard (https://github.com/Guard-Core/symfony-guard) is a Symfony middleware adapter for guard-core-php. It maps `Symfony\Component\HttpFoundation\Request` objects into the guard-core engine and translates the engine's block verdicts back to Symfony-native responses. It works with Symfony 6.4 LTS and 7.x.
 
 - Composer package `rennf93/symfony-guard`, type `library`, license MIT. No `version` field in composer.json (the psr15-guard and laravel-guard convention); versions come from git tags, of which there are none, so composer installs it as `dev-main`.
 - This repository contains NO security logic. Detection, rate limiting, bans, and verdicts all live in guard-core-php.
@@ -13,12 +13,12 @@ rennf93/symfony-guard (https://github.com/rennf93/symfony-guard) is a Symfony mi
 
 ## Ecosystem Position
 
-- `rennf93/guard-core-php` (https://github.com/rennf93/guard-core-php) is the engine. It owns `SecurityConfig`, `GuardEngine`, the `GuardRequest`/`GuardResponse` contracts, `HeaderBag`, `RequestState`, `RedisHandler`, and `GuardRedisException`. Every check, verdict, and block response body originates there.
+- `rennf93/guard-core-php` (https://github.com/Guard-Core/guard-core-php) is the engine. It owns `SecurityConfig`, `GuardEngine`, the `GuardRequest`/`GuardResponse` contracts, `HeaderBag`, `RequestState`, `RedisHandler`, and `GuardRedisException`. Every check, verdict, and block response body originates there.
 - This package is the Symfony adapter for that engine: `GuardMiddleware` decorates an `HttpKernelInterface` and runs each main request through `GuardEngine::execute()`, `SymfonyGuardRequest` implements the core `GuardRequest` contract over `Symfony\Component\HttpFoundation\Request`, and `ResponseTranslator` converts `GuardResponse` objects to `Symfony\Component\HttpFoundation\Response`.
 - Composer constraint: `rennf93/guard-core-php: ^0.1.0` (composer.json `require`). `composer.lock` pins `v0.1.0` (dist zipball fetched from the GitHub VCS repository).
 - Repository configuration in composer.json, in order:
   1. Path repository `../guard-core-php`, marked `"canonical": false` (resolves when a sibling checkout of the core exists; non-canonical, so other sources win on conflict).
-  2. VCS fallback `https://github.com/rennf93/guard-core-php.git` (how fresh checkouts and CI actually resolve the core).
+  2. VCS fallback `https://github.com/Guard-Core/guard-core-php.git` (how fresh checkouts and CI actually resolve the core).
 - `minimum-stability: dev` with `prefer-stable: true`, required until the core has a Packagist distribution. The README documents the same setup for consumers of this package.
 - `config.platform.php: 8.2.0` pins dependency RESOLUTION to the lowest supported PHP. Without it, composer running on PHP 8.4 resolves the transitive symfony packages (error-handler, event-dispatcher, var-dumper) into their 8.x lines, which require PHP >= 8.4.1 and make the lock uninstallable on the 8.2/8.3 matrix legs. The pin makes one lock installable across 8.2-8.4. Keep it.
 
@@ -50,7 +50,7 @@ This machine has NO `php` and NO `composer` binary. Run everything through Docke
 
 Local install path (per composer.json):
 
-1. Make guard-core-php resolvable: either check out the core at a sibling directory `../guard-core-php` (the path repository) or rely on the VCS fallback `https://github.com/rennf93/guard-core-php.git`.
+1. Make guard-core-php resolvable: either check out the core at a sibling directory `../guard-core-php` (the path repository) or rely on the VCS fallback `https://github.com/Guard-Core/guard-core-php.git`.
 2. `composer install` (the lock already pins guard-core-php v0.1.0).
 3. `composer lint`, then `composer test`.
 
@@ -161,7 +161,7 @@ AGENTS.md / CLAUDE.md                 Agent guide (byte-identical copies)
 
 ## Related Projects
 
-- `rennf93/guard-core-php`: https://github.com/rennf93/guard-core-php. The engine this adapter delegates to. `SecurityConfig`, `GuardEngine`, `GuardRequest`/`GuardResponse`, `HeaderBag`, `RequestState`, `RedisHandler`, and `GuardRedisException` live there. Resolved via the `../guard-core-php` path repository (canonical: false) with the VCS fallback `https://github.com/rennf93/guard-core-php.git`; CI checks out its `guard-core-port-php` branch.
-- `rennf93/psr15-guard`: https://github.com/rennf93/psr15-guard. The PSR-15 sibling adapter; the template the PHP adapters mirror.
-- `rennf93/laravel-guard`: https://github.com/rennf93/laravel-guard. The Laravel sibling adapter; the newest precedent this repository mirrors (docs trio, CI shape, plain-PHP runner).
+- `rennf93/guard-core-php`: https://github.com/Guard-Core/guard-core-php. The engine this adapter delegates to. `SecurityConfig`, `GuardEngine`, `GuardRequest`/`GuardResponse`, `HeaderBag`, `RequestState`, `RedisHandler`, and `GuardRedisException` live there. Resolved via the `../guard-core-php` path repository (canonical: false) with the VCS fallback `https://github.com/Guard-Core/guard-core-php.git`; CI checks out its `guard-core-port-php` branch.
+- `rennf93/psr15-guard`: https://github.com/Guard-Core/psr15-guard. The PSR-15 sibling adapter; the template the PHP adapters mirror.
+- `rennf93/laravel-guard`: https://github.com/Guard-Core/laravel-guard. The Laravel sibling adapter; the newest precedent this repository mirrors (docs trio, CI shape, plain-PHP runner).
 - `rennf93/symfony-guard`: this repository, the Symfony adapter layer of the guard-core ecosystem.

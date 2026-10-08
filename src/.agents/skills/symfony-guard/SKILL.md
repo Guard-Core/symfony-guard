@@ -26,7 +26,7 @@ Until `rennf93/guard-core-php` has a Packagist release, point Composer at its re
     "minimum-stability": "dev",
     "prefer-stable": true,
     "repositories": [
-        { "type": "vcs", "url": "https://github.com/rennf93/guard-core-php" }
+        { "type": "vcs", "url": "https://github.com/Guard-Core/guard-core-php" }
     ]
 }
 ```
@@ -103,7 +103,7 @@ $kernel->terminate($request, $response);
 
 ## Related Projects
 
-- `rennf93/guard-core-php`: https://github.com/rennf93/guard-core-php. The engine. `SecurityConfig`, `GuardEngine`, `GuardRequest`/`GuardResponse`, `HeaderBag`, `RequestState`, `RedisHandler`, and `GuardRedisException` live there, and every verdict originates there.
-- `rennf93/psr15-guard`: https://github.com/rennf93/psr15-guard. The PSR-15 sibling adapter; the template the PHP adapters mirror.
-- `rennf93/laravel-guard`: https://github.com/rennf93/laravel-guard. The Laravel sibling adapter; the newest precedent this repository mirrors.
-- `rennf93/symfony-guard`: https://github.com/rennf93/symfony-guard. This repository, the Symfony adapter layer of the guard-core ecosystem.
+- `rennf93/guard-core-php`: https://github.com/Guard-Core/guard-core-php. The engine. `SecurityConfig`, `GuardEngine`, `GuardRequest`/`GuardResponse`, `HeaderBag`, `RequestState`, `RedisHandler`, and `GuardRedisException` live there, and every verdict originates there.
+- `rennf93/psr15-guard`: https://github.com/Guard-Core/psr15-guard. The PSR-15 sibling adapter; the template the PHP adapters mirror.
+- `rennf93/laravel-guard`: https://github.com/Guard-Core/laravel-guard. The Laravel sibling adapter; the newest precedent this repository mirrors.
+- `rennf93/symfony-guard`: https://github.com/Guard-Core/symfony-guard. This repository, the Symfony adapter layer of the guard-core ecosystem.

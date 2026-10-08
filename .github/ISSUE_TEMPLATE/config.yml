@@ -1,10 +1,10 @@
 blank_issues_enabled: false
 contact_links:
   - name: Symfony Guard Documentation
-    url: https://rennf93.github.io/symfony-guard/
+    url: https://guard-core.github.io/symfony-guard/
     about: Check the documentation for usage information and tutorials
   - name: Usage Questions
-    url: https://github.com/rennf93/symfony-guard/discussions
+    url: https://github.com/Guard-Core/symfony-guard/discussions
     about: Please ask and answer questions in GitHub Discussions
   - name: Discord
     url: https://discord.gg/ZW7ZJbjMkK

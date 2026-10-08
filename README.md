@@ -1,8 +1,8 @@
 # symfony-guard
 
-Symfony middleware adapter for [guard-core-php](https://github.com/rennf93/guard-core-php): maps Symfony `HttpFoundation` Request objects to the guard-core engine and translates block verdicts back to Symfony-native responses. Works with Symfony 6.4 LTS and 7.x.
+Symfony middleware adapter for [guard-core-php](https://github.com/Guard-Core/guard-core-php): maps Symfony `HttpFoundation` Request objects to the guard-core engine and translates block verdicts back to Symfony-native responses. Works with Symfony 6.4 LTS and 7.x.
 
-Docs: <https://rennf93.github.io/symfony-guard/>
+Docs: <https://guard-core.github.io/symfony-guard/>
 
 ## Install
 

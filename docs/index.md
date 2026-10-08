@@ -1,7 +1,7 @@
 # psr15-guard
 
 `symfony-guard` is the official Symfony adapter for
-[guard-core-php](https://github.com/rennf93/guard-core-php), the PHP port of the
+[guard-core-php](https://github.com/Guard-Core/guard-core-php), the PHP port of the
 guard-core security engine. It wraps your `HttpKernelInterface` kernel with the
 full engine pipeline: penetration detection, rate limiting, IP banning, and
 verdict responses translated back to Symfony-native responses.
@@ -24,7 +24,7 @@ distribution, point composer at its repository and allow dev stability:
     "minimum-stability": "dev",
     "prefer-stable": true,
     "repositories": [
-        { "type": "vcs", "url": "https://github.com/rennf93/guard-core-php" }
+        { "type": "vcs", "url": "https://github.com/Guard-Core/guard-core-php" }
     ]
 }
 ```
@@ -74,5 +74,5 @@ body, headers). Passing requests continue down the stack untouched.
 
 See [Usage](usage.md) for the full adapter surface and
 [Configuration](configuration.md) for engine tuning. Runnable apps live in the
-[examples](https://github.com/rennf93/psr15-guard/tree/master/examples)
+[examples](https://github.com/Guard-Core/psr15-guard/tree/master/examples)
 directory.

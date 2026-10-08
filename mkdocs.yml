@@ -1,8 +1,8 @@
 site_name: symfony-guard
 site_description: guard-core-php security middleware for Symfony HttpKernel
 site_author: Renn F
-repo_url: https://github.com/rennf93/symfony-guard
-repo_name: rennf93/symfony-guard
+repo_url: https://github.com/Guard-Core/symfony-guard
+repo_name: Guard-Core/symfony-guard
 
 theme:
   name: material
