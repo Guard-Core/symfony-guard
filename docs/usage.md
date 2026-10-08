@@ -67,7 +67,7 @@ limits, bypassed checks) keyed by a route ID on the request state. This adapter
 builds the engine request internally, so there is no route-ID hook; the
 engine-sanctioned equivalent is the `customRequestCheck` config closure, which
 runs as the last pipeline check and can return a block verdict for any request
-shape. See the [advanced example app](https://github.com/rennf93/psr15-guard/tree/master/examples/advanced_app)
+shape. See the [advanced example app](https://github.com/Guard-Core/psr15-guard/tree/master/examples/advanced_app)
 for an admin gate built that way.
 
 ## Testing your integration

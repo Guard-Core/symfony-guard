@@ -4,7 +4,7 @@ Production-shaped guarded app: env-driven `SecurityConfig` engine tuning
 (`src/Config.php`), a kernel whose admin routes drive the engine's ban manager
 (`src/Routes.php`), an admin gate enforced by the engine pipeline, a
 per-endpoint rate limit, and a non-root multi-stage Docker build. It is the
-image published to `ghcr.io/rennf93/symfony-guard-example` by the repo's
+image published to `ghcr.io/guard-core/symfony-guard-example` by the repo's
 `container-release` workflow.
 
 Layout:

@@ -18,11 +18,11 @@
     "repositories": [
         {
             "type": "vcs",
-            "url": "https://github.com/rennf93/guard-core-php"
+            "url": "https://github.com/Guard-Core/guard-core-php"
         },
         {
             "type": "vcs",
-            "url": "https://github.com/rennf93/symfony-guard"
+            "url": "https://github.com/Guard-Core/symfony-guard"
         }
     ],
     "minimum-stability": "dev",

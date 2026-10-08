@@ -2,7 +2,7 @@
 
 The adapter has no options of its own; all security tuning is engine
 configuration via `RenzoFranceschini\GuardCore\Config\SecurityConfig`. See the
-[guard-core-php source](https://github.com/rennf93/guard-core-php/tree/master/src/Config/SecurityConfig.php)
+[guard-core-php source](https://github.com/Guard-Core/guard-core-php/tree/master/src/Config/SecurityConfig.php)
 for the full surface.
 
 ## Minimal tuned setup
