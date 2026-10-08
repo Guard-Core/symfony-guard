@@ -58,7 +58,7 @@ jobs:
 
       - name: Tag and push to GHCR
         run: |
-          IMAGE="ghcr.io/${{ github.repository_owner }}/symfony-guard-example"
+          IMAGE="ghcr.io/guard-core/symfony-guard-example"
           docker tag symfony-guard-advanced-app:local "${IMAGE}:latest"
           docker push "${IMAGE}:latest"
 
