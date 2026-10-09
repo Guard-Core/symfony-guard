@@ -3,6 +3,31 @@ Release Notes
 
 ___
 
+v1.5.0 (2026-10-09)
+-------------------
+
+The decorator-seam release: the engine constraint repins to guard-core-php ^4.3.2 plus the decorator handler pass-through, the agent_stats/reset/refreshCloudIpRanges guard surface, and method-scoped route patterns (v1.5.0)
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+### Changed
+
+- **Engine constraint repinned to guard-core-php ^4.3.2, the shipped parity release.** `composer.json` floors `rennf93/guard-core-php` at the released `^4.3.2` and `composer.lock` resolves it at v4.3.2 from packagist, replacing the `dev-master as 4.3.99` alias the decorator seam PR (#27) carried as registered debt.
+
+### Added
+
+- **Agent surface (PR #25).** `GuardMiddleware` keeps the injected agent handler and exposes `agentStats()`: `{enabled: false, degraded: false}` without a handler, the handler `getStats()` map merged under `enabled: true` with one (fastapi-guard `middleware.agent_stats` semantics). `reset()` delegates to the engine rate-limit handler's reset (fastapi-guard `middleware.reset`). `refreshCloudIpRanges()` mirrors `middleware.refresh_cloud_ip_ranges`: a no-op while cloud blocking is disabled, a store-backed refreshAsync of the configured providers with the configured ttl otherwise.
+- **Method-scoped route patterns (PR #25, the method half of A3).** Route patterns may carry a method prefix ("GET /api/users"): method-scoped patterns match one method, bare patterns match every method, and a method-scoped pattern wins a same-path tie (the method half of the reference `_match_router`).
+- **The decorator handler seam (PR #27, the set_decorator_handler analog).** The constructor's `decoratorHandler` parameter accepts the engine decorator family handler (`RenzoFranceschini\GuardCore\Decorators\SecurityDecorator`): its decorated routes (route pattern keys and callable-endpoint route ids) merge under the explicit `$routes` map (an explicit entry wins a shared pattern) and the handler is wired into the engine (`GuardEngine::setDecoratorHandler`) so requests stamped with a route id resolve their RouteConfig through the handler's registry. The routes map is de-promoted to a plain readonly property assigned once in the constructor (the merge happens before the single assignment).
+- **Example app resolution (PR #28).** The example roots allow `dev-master` alongside the shipped range for the first-party packages; `prefer-stable` keeps them on released versions now that the engine constraint round-trips.
+- **Upstream drift stamp (PR #29).** The daily drift workflow checks out engine master and requires it as `dev-master` (the mounted checkout IS engine master), so the job stays green against the shipped-range adapter constraint.
+- **Post-transfer metadata sweep (PR #30).** Repo URLs, the Pages host, the lock's engine source/dist URLs, the drift workflow checkout slug, mkdocs repo_url, FUNDING, the CODE_OF_CONDUCT enforcement contact, and a new `.github/CODEOWNERS` point at the Guard-Core org.
+
+### Verification
+
+- Local gates on php 8.5.11: `composer validate` exit 0, `composer audit --locked` clean, `make lint` exit 0, `bin/test_symfony.php` all checks green with host Redis on 6379 (including the decorator handler and method-scoped pattern sections), `composer.lock` resolving guard-core-php v4.3.2 from packagist. PHPStan level 3 via the `ghcr.io/phpstan/phpstan:latest` image: no errors.
+
+___
+
 v1.4.0 (2026-10-07)
 -------------------
 
