@@ -1,4 +1,5 @@
 site_name: symfony-guard
+site_url: https://guard-core.github.io/symfony-guard/
 site_description: guard-core-php security middleware for Symfony HttpKernel
 site_author: Renn F
 repo_url: https://github.com/Guard-Core/symfony-guard
