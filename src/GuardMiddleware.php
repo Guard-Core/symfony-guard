@@ -9,6 +9,7 @@ use RenzoFranceschini\GuardCore\Decorators\SecurityDecorator;
 use RenzoFranceschini\GuardCore\Engine\GuardEngine;
 use RenzoFranceschini\GuardCore\GeoIp\CountryResolver;
 use RenzoFranceschini\GuardCore\Request\GuardResponse;
+use RenzoFranceschini\GuardCore\Request\HeaderBag;
 use RenzoFranceschini\GuardCore\Redis\GuardRedisException;
 use RenzoFranceschini\GuardCore\Routing\RouteConfig;
 use Symfony\Component\HttpFoundation\Request;
@@ -185,8 +186,60 @@ final class GuardMiddleware implements HttpKernelInterface, TerminableInterface
         foreach ($this->engine->responseHeaders() as $name => $value) {
             $response->headers->set($name, $value);
         }
+        $response = $this->applyModifier($response);
         foreach ($this->engine->corsResponseHeaders($guardRequest) as $name => $value) {
             $response->headers->set($name, $value);
+        }
+
+        return $response;
+    }
+
+    /**
+     * Runs the engine's customResponseModifier over a pass-through
+     * response: the response is lent to the modifier as a GuardResponse
+     * (status, headers, body when the content is a string) and the result
+     * is merged back. Nothing is read or touched while no modifier is
+     * configured. Set-Cookie is left alone (a joined header line cannot
+     * carry several cookies), an unchanged header keeps its original value
+     * list, and a streamed or file response keeps its body (only its status
+     * and headers can change).
+     */
+    private function applyModifier(Response $response): Response
+    {
+        if ($this->engine->config()->customResponseModifier === null) {
+            return $response;
+        }
+        $content = $response->getContent();
+        $body = is_string($content) ? $content : null;
+        $before = [];
+        foreach ($response->headers->all() as $name => $values) {
+            if (strtolower($name) !== 'set-cookie') {
+                $before[strtolower($name)] = implode(', ', (array) $values);
+            }
+        }
+        $modified = $this->engine->applyResponseModifier(
+            new GuardResponse($response->getStatusCode(), new HeaderBag($before), $body)
+        );
+
+        $after = $modified->headers()->all();
+        foreach ($before as $name => $value) {
+            if (!isset($after[$name])) {
+                $response->headers->remove($name);
+            }
+        }
+        foreach ($after as $name => $value) {
+            if (($before[$name] ?? null) !== $value) {
+                $response->headers->set($name, $value);
+            }
+        }
+        if ($modified->statusCode() !== $response->getStatusCode()) {
+            $response->setStatusCode($modified->statusCode());
+        }
+        if ($body !== null && $modified->body() !== null && $modified->body() !== $body) {
+            $response->setContent($modified->body());
+            if (($after['content-length'] ?? null) === ($before['content-length'] ?? null)) {
+                $response->headers->remove('Content-Length');
+            }
         }
 
         return $response;

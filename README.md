@@ -210,6 +210,59 @@ return new GuardMiddleware(
 
 `routes` patterns match a path exactly or as a prefix when they end with `/`. Geo rate-limit tiers need a country resolver: pass `geoRateLimitResolver` explicitly, or configure `geoIpHandler` together with `blockedCountries`/`whitelistCountries` (the engine keeps the injected handler only when country lists are set) and the middleware bridges it onto the engine's rate-limit handler automatically.
 
+## Telemetry agent and dynamic rules
+
+The adapter forwards an optional `agentHandler` to the engine (`GuardEngine::setAgentHandler()`), so security events, metrics and dashboard dynamic rules flow through [guard-agent-php](https://github.com/Guard-Core/guard-agent-php). Install it with `composer require rennf93/guard-agent-php`, create and start the agent where your `App\Kernel` is assembled, pass it as the `agentHandler` argument, and declare it in the config with `enableAgent: true`:
+
+```php
+use RenzoFranceschini\GuardAgent\GuardAgent;
+use RenzoFranceschini\GuardCore\Config\SecurityConfig;
+use RenzoFranceschini\GuardCore\Engine\GuardEngine;
+
+$agent = new GuardAgent([
+    'apiKey' => $_ENV['GUARD_API_KEY'],
+    'endpoint' => 'https://api.guard-core.com',
+    'projectId' => 'my-project',
+]);
+$agent->start();
+
+$config = new SecurityConfig(
+    enableRedis: true,
+    enableAgent: true,
+    enableDynamicRules: true,
+    dynamicRuleInterval: 300,
+    enableEnrichment: true,
+    agentProjectId: 'my-project',
+);
+
+$kernel = new GuardMiddleware($kernel, new GuardEngine($config), agentHandler: $agent);
+
+register_shutdown_function(static function () use ($agent): void {
+    $agent->flushBuffer();
+    $agent->stop();
+});
+```
+
+`enableDynamicRules` and `enableEnrichment` require `enableAgent`, and dynamic rules need an agent handler that exposes `getDynamicRules()` (`GuardAgent` does). The engine builds the dynamic rule manager itself and checks for new rules on the first request and then every `dynamicRuleInterval` seconds (default 300, minimum 60), because a PHP request process has no background loop. Without an agent handler the engine warns and stays on the static config. `agentStats()` on the adapter reports `{enabled: false, degraded: false}` without a handler and merges the handler's `getStats()` map with one. Symfony can ship the buffered telemetry from a `kernel.terminate` listener; the shutdown function above does the same.
+
+## Response modifier
+
+`SecurityConfig::customResponseModifier` is a `Closure(GuardResponse): GuardResponse` that the engine applies once to every response it returns itself (blocks, redirects and the fail-closed response), after the security headers and before the CORS verdict headers. This adapter applies the same modifier to the pass-through responses it sends, through `GuardEngine::applyResponseModifier()`, including excluded-path responses and responses of requests that bypass all checks, and it never applies it twice to a response the engine already modified. The order on a pass-through response is security headers, modifier, then CORS verdict headers, so the CORS policy has the last word on its own headers.
+
+```php
+use RenzoFranceschini\GuardCore\Request\GuardResponse;
+
+$config = new SecurityConfig(
+    customResponseModifier: static function (GuardResponse $response): GuardResponse {
+        $response->headers()->set('X-Served-By', 'edge-1');
+
+        return $response;
+    },
+);
+```
+
+The modifier sees the status, the headers (`Set-Cookie` is not exposed) and the body, and the changes are merged back onto the Symfony `Response`; a streamed or file response keeps its body (only its status and headers can change). A modifier that throws leaves the response unmodified. Nothing is read from the response while no modifier is configured. The modifier seam needs guard-core-php 4.4.0 or later.
+
 ## Lifecycle
 
 PHP shared-nothing applies: construct `GuardEngine` (and therefore `GuardMiddleware`) per request in classic FPM, or per worker under long-running runtimes (FrankenPHP, RoadRunner, workerman). The middleware holds no mutable state of its own. In-memory fallbacks are per-request safety nets; distributed rate limits, IP bans, and cloud-range caches require Redis (set `enableRedis: true` and point `REDIS_HOST`/`REDIS_PORT` at your instance).

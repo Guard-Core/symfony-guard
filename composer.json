@@ -12,6 +12,9 @@
     "require-dev": {
         "phpunit/php-code-coverage": "^11.0"
     },
+    "suggest": {
+        "rennf93/guard-agent-php": "Telemetry agent: ships security events and metrics to the Guard Core App and delivers dynamic rules (pass it as the agentHandler argument)"
+    },
     "autoload": {
         "psr-4": {
             "RenzoFranceschini\\GuardCoreSymfony\\": "src/"
