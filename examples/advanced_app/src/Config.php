@@ -19,14 +19,6 @@ final class Config
             enableRedis: true,
             redisPrefix: getenv('REDIS_PREFIX') ?: 'guard_core_symfony:',
             redisFailOpen: true,
-            // The PHP port has no ExcludedDetectionHeaders surface yet, so the
-            // ssrf category flags benign Host headers (e.g. "localhost:8080")
-            // on every request. The demo disables that one category; SSRF
-            // hygiene belongs to the proxy tier. XSS, SQLi, and the rest stay
-            // fully on.
-            enabledDetectionCategories: array_values(
-                array_diff(SecurityConfig::DETECTION_CATEGORIES, ['ssrf'])
-            ),
             trustedProxies: self::csv('TRUSTED_PROXIES'),
             trustedProxyDepth: (int) (getenv('TRUSTED_PROXY_DEPTH') ?: 1),
             enableRateLimiting: true,

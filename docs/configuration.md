@@ -48,25 +48,19 @@ fall back to in-process state, which does not share across replicas.
 
 ## Excluded detection headers
 
-The Python and Go engines expose an `ExcludedDetectionHeaders` surface that
-skips suspicious-content scanning for address headers (`host`,
-`x-forwarded-for`, `x-real-ip`, ...). The PHP port does not have that surface
-yet: every header value is scanned like any other input. The `ssrf` category
-in particular flags benign `Host` headers (for example `localhost:8080`) on
-every request. Until the surface is ported, either disable that one category
-explicitly, as the runnable examples do:
+The engine skips the `ssrf` category for the proxy identity headers (`host`, `x-forwarded-for`, `x-real-ip`, `cf-connecting-ip`, `forwarded`, ...) by default, so a benign `Host` header such as `localhost:8080` does not trigger a block with every detection category enabled. Every other category (sqli, xss, cmd_injection, and so on) still scans those headers.
+
+Pass `excludedDetectionHeaders` to extend that set with your own address-carrying headers, and `excludedSemanticDetectionHeaders` to keep a header (for example a JWT session cookie) out of the semantic analyzer only:
 
 ```php
 $config = new SecurityConfig(
-    enabledDetectionCategories: array_values(
-        array_diff(SecurityConfig::DETECTION_CATEGORIES, ['ssrf'])
-    ),
+    excludedDetectionHeaders: ['x-custom-proxy-ip'],
+    excludedSemanticDetectionHeaders: ['x-session-token'],
     // ...
 );
 ```
 
-or strip and normalize address headers at your proxy. Do not try to mutate the
-request inside the middleware, the adapter does not support it.
+Do not disable the `ssrf` category to work around address headers, and do not try to mutate the request inside the middleware, the adapter does not support it.
 
 ## Body inspection
 
