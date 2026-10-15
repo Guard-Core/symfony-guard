@@ -583,22 +583,15 @@ middleware constructs and serves requests even when Redis is unreachable; with
 <code>redisFailOpen: false</code> construction fails closed. Without Redis the managers
 fall back to in-process state, which does not share across replicas.</p>
 <h2 id="excluded-detection-headers">Excluded detection headers</h2>
-<p>The Python and Go engines expose an <code>ExcludedDetectionHeaders</code> surface that
-skips suspicious-content scanning for address headers (<code>host</code>,
-<code>x-forwarded-for</code>, <code>x-real-ip</code>, ...). The PHP port does not have that surface
-yet: every header value is scanned like any other input. The <code>ssrf</code> category
-in particular flags benign <code>Host</code> headers (for example <code>localhost:8080</code>) on
-every request. Until the surface is ported, either disable that one category
-explicitly, as the runnable examples do:</p>
+<p>The engine skips the <code>ssrf</code> category for the proxy identity headers (<code>host</code>, <code>x-forwarded-for</code>, <code>x-real-ip</code>, <code>cf-connecting-ip</code>, <code>forwarded</code>, ...) by default, so a benign <code>Host</code> header such as <code>localhost:8080</code> does not trigger a block with every detection category enabled. Every other category (sqli, xss, cmd_injection, and so on) still scans those headers.</p>
+<p>Pass <code>excludedDetectionHeaders</code> to extend that set with your own address-carrying headers, and <code>excludedSemanticDetectionHeaders</code> to keep a header (for example a JWT session cookie) out of the semantic analyzer only:</p>
 <div class="highlight"><pre><span></span><code><span class="x">$config = new SecurityConfig(</span>
-<span class="x">    enabledDetectionCategories: array_values(</span>
-<span class="x">        array_diff(SecurityConfig::DETECTION_CATEGORIES, ['ssrf'])</span>
-<span class="x">    ),</span>
+<span class="x">    excludedDetectionHeaders: ['x-custom-proxy-ip'],</span>
+<span class="x">    excludedSemanticDetectionHeaders: ['x-session-token'],</span>
 <span class="x">    // ...</span>
 <span class="x">);</span>
 </code></pre></div>
-<p>or strip and normalize address headers at your proxy. Do not try to mutate the
-request inside the middleware, the adapter does not support it.</p>
+<p>Do not disable the <code>ssrf</code> category to work around address headers, and do not try to mutate the request inside the middleware, the adapter does not support it.</p>
 <h2 id="body-inspection">Body inspection</h2>
 <p><code>PsrGuardRequest::MAX_BODY_BYTES</code> (256 KiB, matching the engine's full-scan
 window) bounds what the detector sees. Bodies larger than the limit are still
