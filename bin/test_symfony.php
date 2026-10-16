@@ -176,6 +176,17 @@ function hookCapture(array &$hooks): \Closure
     };
 }
 
+function modStack(SecurityConfig $config, array $routes = [], ?Response $downstream = null): Closure
+{
+    $kernel = new RecordingKernel();
+    if ($downstream !== null) {
+        $kernel->response = $downstream;
+    }
+    $middleware = new GuardMiddleware($kernel, new GuardEngine($config), routes: $routes);
+
+    return static fn (Request $request): Response => $middleware->handle($request, HttpKernelInterface::MAIN_REQUEST);
+}
+
 $t = new T();
 $attackQuery = 'q=' . urlencode("<script>alert('xss')</script>");
 
@@ -777,6 +788,90 @@ $overrideResolve = (new ReflectionClass($overrideMw))->getMethod('resolveRouteCo
 $t->same($explicit, $overrideResolve->invoke($overrideMw, new SymfonyGuardRequest(Request::create('/mixed', 'GET'))), 'an explicit route map entry wins a shared pattern over the decorator');
 $decoratorResolve = (new ReflectionClass($decoratorMw))->getMethod('resolveRouteConfig');
 $t->same(true, $decoratorResolve->invoke($decoratorMw, new SymfonyGuardRequest(Request::create('/throttled', 'POST'))) !== null, 'the decorator route map resolves like a hand-built one');
+
+$t->section('custom response modifier on pass-through responses');
+$modCalls = 0;
+$seenByModifier = null;
+$modifier = static function (GuardResponse $response) use (&$modCalls, &$seenByModifier): GuardResponse {
+    $modCalls++;
+    $seenByModifier = $response;
+    $response->headers()->set('X-Modified', 'yes');
+    $response->headers()->set('Access-Control-Allow-Origin', '*');
+    $response->headers()->remove('X-Frame-Options');
+
+    return $response;
+};
+$run = modStack(new SecurityConfig(
+    enableRedis: false,
+    enablePenetrationDetection: false,
+    enableCors: true,
+    corsAllowOrigins: ['https://app.test'],
+    customResponseModifier: $modifier
+));
+$passed = $run(symfonyRequest('/page', '203.0.113.130', 'GET', '', '', ['Origin' => 'https://app.test']));
+$t->same(1, $modCalls, 'the modifier runs once on a pass-through response');
+$t->same('yes', $passed->headers->get('X-Modified'), 'the modifier header reaches the outgoing response');
+$t->same(null, $passed->headers->get('X-Frame-Options'), 'the modifier can remove a header the engine set');
+$t->same('https://app.test', $passed->headers->get('Access-Control-Allow-Origin'), 'CORS verdict headers are applied after the modifier');
+$t->same('downstream', $passed->getContent(), 'an untouched body is preserved');
+$t->same(200, $passed->getStatusCode(), 'an untouched status is preserved');
+$t->same('downstream', $seenByModifier?->body(), 'the modifier sees the downstream body');
+$t->ok($seenByModifier?->headers()->has('X-Content-Type-Options') === true, 'the modifier runs after the security headers');
+
+$t->section('modifier changes status and body');
+$rewrite = static fn (GuardResponse $response): GuardResponse => new GuardResponse(202, $response->headers(), 'rewritten');
+$downstream = new Response('downstream');
+$downstream->headers->set('Content-Length', '10');
+$run = modStack(new SecurityConfig(enableRedis: false, enablePenetrationDetection: false, customResponseModifier: $rewrite), [], $downstream);
+$rewritten = $run(symfonyRequest('/page', '203.0.113.131'));
+$t->same(202, $rewritten->getStatusCode(), 'the modifier status replaces the response status');
+$t->same('rewritten', $rewritten->getContent(), 'the modifier body replaces the response body');
+$t->same(null, $rewritten->headers->get('Content-Length'), 'a stale Content-Length is dropped when the body changes');
+
+$t->section('modifier exception leaves the pass-through response unmodified');
+$boom = static function (GuardResponse $response): GuardResponse {
+    throw new RuntimeException('modifier failed');
+};
+$run = modStack(new SecurityConfig(enableRedis: false, enablePenetrationDetection: false, customResponseModifier: $boom));
+$prevLog = ini_set('error_log', '/dev/null');
+$unmodified = $run(symfonyRequest('/page', '203.0.113.132'));
+ini_set('error_log', $prevLog === false ? '' : $prevLog);
+$t->same(200, $unmodified->getStatusCode(), 'a failing modifier keeps the status');
+$t->same('downstream', $unmodified->getContent(), 'a failing modifier keeps the body');
+
+$t->section('modifier on excluded-path and all-checks bypass responses');
+$modCalls = 0;
+$counting = static function (GuardResponse $response) use (&$modCalls): GuardResponse {
+    $modCalls++;
+    $response->headers()->set('X-Modified', 'yes');
+
+    return $response;
+};
+$run = modStack(
+    new SecurityConfig(enableRedis: false, customResponseModifier: $counting),
+    ['/open' => new RouteConfig(bypassedChecks: ['all'])]
+);
+$excluded = $run(symfonyRequest('/docs/api', '203.0.113.133', 'GET', $attackQuery));
+$t->same(200, $excluded->getStatusCode(), 'the attack on an excluded path passes');
+$t->same('yes', $excluded->headers->get('X-Modified'), 'the excluded-path response goes through the modifier');
+$bypassed = $run(symfonyRequest('/open', '203.0.113.134', 'GET', $attackQuery));
+$t->same(200, $bypassed->getStatusCode(), 'the attack on an all-checks bypass route passes');
+$t->same('yes', $bypassed->headers->get('X-Modified'), 'the all-checks bypass response goes through the modifier');
+$t->same(2, $modCalls, 'one modifier call per pass-through response');
+
+$t->section('engine block responses are modified exactly once');
+$modCalls = 0;
+$run = modStack(new SecurityConfig(enableRedis: false, blacklist: ['192.0.2.77'], customResponseModifier: $counting));
+$blocked = $run(symfonyRequest('/page', '192.0.2.77'));
+$t->same(403, $blocked->getStatusCode(), 'the blacklisted client is blocked');
+$t->same(1, $modCalls, 'the adapter does not apply the modifier again to a block the engine already modified');
+$t->same('yes', $blocked->headers->get('X-Modified'), 'the block response carries the modifier header');
+
+$t->section('no modifier: nothing is touched');
+$run = modStack(new SecurityConfig(enableRedis: false, enablePenetrationDetection: false));
+$plain = $run(symfonyRequest('/page', '203.0.113.135'));
+$t->same(null, $plain->headers->get('X-Modified'), 'no modifier header without a configured modifier');
+
 
 $total = $t->passed + $t->failed;
 echo "\nPassed: {$t->passed}, Failed: {$t->failed}\n";
