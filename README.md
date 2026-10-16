@@ -274,7 +274,7 @@ PHP shared-nothing applies: construct `GuardEngine` (and therefore `GuardMiddlew
 - Bounded body read: the request body is scanned as a prefix of at most 256 KiB (`SymfonyGuardRequest::MAX_BODY_BYTES`, matching the engine's full-scan window). The framework materializes the full body in memory; the engine only ever sees the capped prefix. Payloads beyond the prefix, or signatures split across its boundary, are not detected.
 - Client address: the adapter maps the engine's `clientHost()` onto `$request->getClientIp()`. Without Symfony's trusted-proxies configuration that is the connecting `REMOTE_ADDR`, and the engine's own `trusted_proxies` / `X-Forwarded-For` resolution applies. With Symfony trusted proxies configured, Symfony resolves the forwarded chain first and the engine sees the resolved client. Pick one side to do the resolving; configuring both can double-hop.
 - With `redisFailOpen: true` the middleware constructs and serves requests even when Redis is unreachable; with `redisFailOpen: false` construction fails closed.
-- No security headers or CORS are added by this adapter. (Symfony response mechanics put a `Date` and a private `Cache-Control` on every response object; the engine's own headers are copied exactly.)
+- Security headers and CORS: the adapter computes none of them. On a pass-through response it merges the engine's security header set, then the engine's `customResponseModifier` output, then the engine's CORS verdict headers (CORS last, so the CORS policy wins on a shared header name). Blocked responses are exact translations of the engine's verdict.
 
 ## Testing
 
@@ -287,7 +287,7 @@ composer test
 
 ## Status
 
-Released: v1.1.0 on Packagist. The engine floor is `rennf93/guard-core-php ^4.1.0`; no 4.1.0 of the engine is currently published (its tag is absent and Packagist's latest is v4.0.4), so public resolution is collapsed until the synchronized 4.2.0 train retags the engine - CI resolves the engine from the master sibling checkout in the meantime.
+Install the latest release from Packagist. The engine floor is `rennf93/guard-core-php ^4.4.0`, which provides `GuardEngine::applyResponseModifier()` and the agent and dynamic rule validation described above.
 
 ## License
 
