@@ -78,7 +78,7 @@ Composer scripts (composer.json `scripts`; these are the only two):
 | `composer test` | `php bin/test_symfony.php` |
 | `composer lint` | `for f in $(find src bin -name '*.php'); do php -l "$f" > /dev/null || exit 1; done && echo LINT_OK` |
 
-Direct commands used by CI (verified in `.github/workflows/ci.yml`; the same install, lint, and test steps appear in `release.yml` and `scheduled-lint.yml`):
+Direct commands used by CI (verified in `.github/workflows/ci.yml`; the same install, lint, and test steps appear in `scheduled-lint.yml`):
 
 - `composer install --no-interaction --no-progress`
 - `composer update rennf93/guard-core-php --no-interaction` (CI deliberately refreshes the core dependency on every run)
@@ -94,7 +94,7 @@ Direct commands used by CI (verified in `.github/workflows/ci.yml`; the same ins
 ```
 .github/dependabot.yml                Weekly dependabot: github-actions + composer (grouped)
 .github/workflows/ci.yml              CI: test matrix php 8.2/8.3/8.4 + redis service + composer audit
-.github/workflows/release.yml         Release Gate: same suite, runs on v* tags
+.github/workflows/release.yml         Release Gate: on v* tags, requires green ci.yml, static-analysis.yml and live-smoke.yml on the tagged commit
 .github/workflows/scheduled-lint.yml  Weekly cron (Mon 04:00 UTC): php -l sweep + composer audit
 bin/test_symfony.php                  Entire test suite, plain PHP runner with a T assertion harness
 composer.json                         Package metadata, autoload, scripts, repositories, platform pin
