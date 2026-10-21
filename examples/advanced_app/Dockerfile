@@ -13,7 +13,7 @@ RUN --mount=type=secret,id=github_token \
     fi && \
     composer install --no-interaction --no-progress --prefer-dist --no-dev
 
-FROM php:8.3-cli-alpine
+FROM php:8.3.36-cli-alpine
 
 RUN addgroup -S guard && adduser -S -G guard guard
 
